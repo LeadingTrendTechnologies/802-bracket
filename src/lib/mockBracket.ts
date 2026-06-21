@@ -24,6 +24,7 @@ export const EDITABLE_KEYS: (keyof BracketConfig)[] = [
   "weeklyNote",
   "currentRound",
   "currentTrack",
+  "lockAt",
   "leftSeeds",
   "rightSeeds",
   "winners",
@@ -39,6 +40,21 @@ export function getMockBracket(): StoredBracket {
     updatedAt: new Date().toISOString(),
   };
   return g.__mockBracket;
+}
+
+export type MockPick = {
+  userName: string;
+  winners: Record<string, number>;
+  champion: number | null;
+  tiebreaker: number | null;
+  score: number;
+  updatedAt: number;
+};
+
+export function getMockPicks(): MockPick[] {
+  const g = globalThis as unknown as { __mockPicks?: MockPick[] };
+  g.__mockPicks ??= [];
+  return g.__mockPicks;
 }
 
 export function applyBracketUpdate(

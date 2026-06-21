@@ -12,7 +12,7 @@ const BASE = (env.VITE_API_BASE_URL as string) || "";
 
 const BRACKET_PATH = "/api/bracket"; // GET -> getBracket
 const ADMIN_BRACKET_PATH = "/api/bracket/admin"; // POST -> createAdminBracket
-const PICKS_PATH = "/api/bracket/pick"; // GET -> leaderboard, POST -> submitPick
+const PICKS_PATH = "/api/bracket/pick"; // POST -> submitPick, GET -> leaderboard
 
 // Fields that mirror the editable columns on the Bracket model / BracketConfig.
 const EDITABLE_KEYS: (keyof BracketConfig)[] = [
@@ -28,6 +28,7 @@ const EDITABLE_KEYS: (keyof BracketConfig)[] = [
   "weeklyNote",
   "currentRound",
   "currentTrack",
+  "lockAt",
   "leftSeeds",
   "rightSeeds",
   "winners",
@@ -76,8 +77,9 @@ export async function saveBracket(config: BracketConfig, slug = "default") {
 export type PickSubmission = {
   slug?: string;
   userName: string;
-  winners: Record<string, string>;
-  champion: string | null;
+  // matchId -> chosen SEED number (stable across name/position changes)
+  winners: Record<string, number>;
+  champion: number | null;
   tiebreaker?: number | null;
 };
 
@@ -91,10 +93,49 @@ export async function submitPick(pick: PickSubmission) {
   return res.json();
 }
 
-export async function getLeaderboard(slug = "default") {
-  const res = await fetch(
-    `${BASE}${PICKS_PATH}?slug=${encodeURIComponent(slug)}`,
-  );
-  if (!res.ok) throw new Error(`getLeaderboard failed (${res.status})`);
-  return res.json();
+export type UserPicks = {
+  winners: Record<string, number>;
+  champion: number | null;
+} | null;
+
+// Load a single participant's saved picks (by name) from the bracket endpoint.
+export async function getUserPicks(
+  userName: string,
+  slug = "default",
+): Promise<UserPicks> {
+  try {
+    const res = await fetch(
+      `${BASE}${BRACKET_PATH}?slug=${encodeURIComponent(slug)}&user=${encodeURIComponent(userName)}`,
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.pick) return null;
+    return {
+      winners: (data.pick.winners as Record<string, number>) || {},
+      champion: (data.pick.champion as number | null) ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export type LeaderboardRow = {
+  userName: string;
+  correct: number;
+  points: number;
+  champion: number | null; // champion seed
+  updatedAt: string | number;
+};
+
+export async function getLeaderboard(slug = "default"): Promise<LeaderboardRow[]> {
+  try {
+    const res = await fetch(
+      `${BASE}${PICKS_PATH}?slug=${encodeURIComponent(slug)}`,
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.leaderboard as LeaderboardRow[]) || [];
+  } catch {
+    return [];
+  }
 }

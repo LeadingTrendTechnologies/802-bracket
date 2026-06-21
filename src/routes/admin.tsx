@@ -5,8 +5,13 @@ import BracketView from "~/components/BracketView";
 import {
   defaultConfig,
   resolveBracket,
+  seedsToList,
+  listToSeeds,
+  isLocked,
+  formatLockDate,
+  toDateTimeLocalValue,
+  LEFT_SEED_SET,
   type BracketConfig,
-  type SeedPair,
 } from "~/lib/bracket";
 import { getBracket, saveBracket } from "~/lib/api";
 
@@ -55,16 +60,22 @@ export default function AdminPage() {
 
   const patch = (p: Partial<BracketConfig>) => commit({ ...config(), ...p });
 
-  const updateSeed = (
-    side: "leftSeeds" | "rightSeeds",
-    idx: number,
-    key: keyof SeedPair,
-    value: string,
-  ) => {
-    const seeds = config()[side].map((pair, i) =>
-      i === idx ? { ...pair, [key]: value } : pair,
-    );
-    patch({ [side]: seeds } as Partial<BracketConfig>);
+  // Drivers as a flat, seed-ordered list (index 0 = seed 1 ... 31 = seed 32).
+  const seedList = () => seedsToList(config().leftSeeds, config().rightSeeds);
+  const commitList = (list: string[]) => patch(listToSeeds(list));
+
+  const updateDriver = (seedIdx: number, value: string) => {
+    const list = seedList();
+    list[seedIdx] = value;
+    commitList(list);
+  };
+
+  // Remove a driver: everyone below shifts up a seed, seed 32 becomes empty.
+  const deleteDriver = (seedIdx: number) => {
+    const list = seedList();
+    list.splice(seedIdx, 1);
+    list.push("");
+    commitList(list);
   };
 
   const pickWinner = (matchId: string, team: string) => {
@@ -180,6 +191,45 @@ export default function AdminPage() {
               />
             </div>
           </div>
+
+          {/* Picks lock cutoff */}
+          <div class="mb-3 rounded-lg border border-amber-600/40 bg-amber-950/20 p-3">
+            <p class="mb-2 text-[10px] font-bold font-mono uppercase tracking-widest text-amber-300">
+              Picks Lock · participants can edit until this time
+            </p>
+            <div class="flex flex-wrap items-center gap-3">
+              <input
+                type="datetime-local"
+                value={toDateTimeLocalValue(config().lockAt)}
+                onInput={(e) =>
+                  patch({
+                    lockAt: e.currentTarget.value
+                      ? new Date(e.currentTarget.value).toISOString()
+                      : null,
+                  })
+                }
+                class="rounded border border-slate-700 bg-slate-900/80 px-2 py-1.5 text-sm font-mono text-white focus:border-amber-500 focus:outline-none"
+              />
+              <Show when={config().lockAt}>
+                <button
+                  type="button"
+                  onClick={() => patch({ lockAt: null })}
+                  class="rounded border border-slate-700 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 transition-colors hover:border-red-700 hover:text-red-400"
+                >
+                  Clear
+                </button>
+                <span
+                  class={`text-[11px] font-mono ${
+                    isLocked(config().lockAt) ? "text-red-400" : "text-slate-400"
+                  }`}
+                >
+                  {isLocked(config().lockAt)
+                    ? `Locked since ${formatLockDate(config().lockAt)}`
+                    : `Locks ${formatLockDate(config().lockAt)}`}
+                </span>
+              </Show>
+            </div>
+          </div>
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               label="Title line 1"
@@ -237,76 +287,46 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {/* Seeds */}
-        <section class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div class="rounded-xl border border-blue-800/40 bg-blue-950/20 p-4">
-            <h2 class="mb-3 text-[11px] font-bold font-mono uppercase tracking-widest text-blue-300">
-              Left Bracket · Seeds 1–16
-            </h2>
-            <div class="space-y-2">
-              <Index each={config().leftSeeds}>
-                {(pair, i) => (
-                  <div class="grid grid-cols-[1.25rem_1fr_1fr] items-center gap-2">
-                    <span class="text-center text-[10px] font-black text-blue-400">
-                      {i + 1}
-                    </span>
-                    <input
-                      type="text"
-                      title={pair().t1}
-                      class="rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs font-mono focus:border-cyan-500 focus:outline-none"
-                      value={pair().t1}
-                      onInput={(e) =>
-                        updateSeed("leftSeeds", i, "t1", e.currentTarget.value)
-                      }
-                    />
-                    <input
-                      type="text"
-                      title={pair().t2}
-                      class="rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs font-mono focus:border-cyan-500 focus:outline-none"
-                      value={pair().t2}
-                      onInput={(e) =>
-                        updateSeed("leftSeeds", i, "t2", e.currentTarget.value)
-                      }
-                    />
-                  </div>
-                )}
-              </Index>
-            </div>
-          </div>
-
-          <div class="rounded-xl border border-red-800/40 bg-red-950/20 p-4">
-            <h2 class="mb-3 text-[11px] font-bold font-mono uppercase tracking-widest text-red-300">
-              Right Bracket · Seeds 17–32
-            </h2>
-            <div class="space-y-2">
-              <Index each={config().rightSeeds}>
-                {(pair, i) => (
-                  <div class="grid grid-cols-[1.5rem_1fr_1fr] items-center gap-2">
-                    <span class="text-center text-[10px] font-black text-red-400">
-                      {i + 9}
-                    </span>
-                    <input
-                      type="text"
-                      title={pair().t1}
-                      class="rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs font-mono focus:border-red-500 focus:outline-none"
-                      value={pair().t1}
-                      onInput={(e) =>
-                        updateSeed("rightSeeds", i, "t1", e.currentTarget.value)
-                      }
-                    />
-                    <input
-                      type="text"
-                      title={pair().t2}
-                      class="rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs font-mono focus:border-red-500 focus:outline-none"
-                      value={pair().t2}
-                      onInput={(e) =>
-                        updateSeed("rightSeeds", i, "t2", e.currentTarget.value)
-                      }
-                    />
-                  </div>
-                )}
-              </Index>
-            </div>
+        {/* Drivers (seeded 1-32) */}
+        <section class="mb-8 rounded-xl border border-slate-700/60 bg-slate-900/40 p-4">
+          <h2 class="text-[11px] font-bold font-mono uppercase tracking-widest text-cyan-300">
+            Drivers · Seeded 1–32
+          </h2>
+          <p class="mb-4 mt-1 text-[11px] tracking-wide text-slate-400">
+            Type names in seed order — the first name is the #1 seed. Deleting a
+            driver shifts everyone below up a seed and frees the last spot.
+          </p>
+          <div class="grid grid-flow-col grid-rows-[repeat(16,minmax(0,auto))] gap-x-8 gap-y-1.5">
+            <Index each={seedList()}>
+              {(name, i) => (
+                <div class="flex items-center gap-2">
+                  <span
+                    class={`w-6 shrink-0 text-right text-[11px] font-black tabular-nums ${
+                      LEFT_SEED_SET.has(i + 1) ? "text-blue-400" : "text-red-400"
+                    }`}
+                  >
+                    {i + 1}
+                  </span>
+                  <input
+                    type="text"
+                    title={name()}
+                    placeholder={`Seed ${i + 1}`}
+                    class="min-w-0 flex-1 rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs font-mono text-white placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none"
+                    value={name()}
+                    onInput={(e) => updateDriver(i, e.currentTarget.value)}
+                  />
+                  <button
+                    type="button"
+                    title="Delete driver (shift others up)"
+                    aria-label={`Delete seed ${i + 1}`}
+                    onClick={() => deleteDriver(i)}
+                    class="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-slate-700 text-sm leading-none text-slate-500 transition-colors hover:border-red-600 hover:bg-red-600/20 hover:text-red-300"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+            </Index>
           </div>
         </section>
 

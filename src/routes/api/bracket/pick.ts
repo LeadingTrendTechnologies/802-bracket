@@ -1,37 +1,47 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { jsonResponse } from "~/lib/mockBracket";
+import {
+  getMockBracket,
+  getMockPicks,
+  jsonResponse,
+  type MockPick,
+} from "~/lib/mockBracket";
+import { gradePicks, CHAMPION_PICK_ID } from "~/lib/bracket";
 
 /*
- * MOCK of submitPick.mjs / leaderboard
- *   POST /api/bracket/pick  -> create or update a participant's picks
- *   GET  /api/bracket/pick  -> leaderboard
+ * MOCK of submitPick.mjs / getLeaderboard.mjs
+ *   POST /api/bracket/pick           -> create or update a participant's picks
+ *   GET  /api/bracket/pick           -> leaderboard (scored live, 10 pts/pick)
+ *   GET  /api/bracket/pick?user=Name -> a single user's full picks
  *
  * In-memory per dev-server process (held on globalThis).
  */
-type StoredPick = {
-  userName: string;
-  winners: Record<string, string>;
-  champion: string | null;
-  tiebreaker: number | null;
-  score: number;
-  updatedAt: number;
-};
+type StoredPick = MockPick;
 
-function getPicks(): StoredPick[] {
-  const g = globalThis as unknown as { __mockPicks?: StoredPick[] };
-  g.__mockPicks ??= [];
-  return g.__mockPicks;
-}
+export async function GET({ request }: APIEvent) {
+  const user = new URL(request.url).searchParams.get("user");
+  if (user) {
+    const p = getMockPicks().find((x) => x.userName === user);
+    return jsonResponse({
+      ok: true,
+      pick: p ? { userName: p.userName, winners: p.winners, champion: p.champion } : null,
+    });
+  }
 
-export async function GET() {
-  const leaderboard = [...getPicks()]
-    .sort((a, b) => b.score - a.score || a.updatedAt - b.updatedAt)
-    .map(({ userName, score, champion, updatedAt }) => ({
-      userName,
-      score,
-      champion,
-      updatedAt,
-    }));
+  const cfg = getMockBracket();
+  const leaderboard = getMockPicks()
+    .map((p) => {
+      const merged: Record<string, number> = { ...p.winners };
+      if (p.champion != null) merged[CHAMPION_PICK_ID] = p.champion;
+      const { correct, points } = gradePicks(cfg, merged);
+      return {
+        userName: p.userName,
+        correct,
+        points,
+        champion: p.champion,
+        updatedAt: p.updatedAt,
+      };
+    })
+    .sort((a, b) => b.points - a.points || a.updatedAt - b.updatedAt);
   return jsonResponse({ ok: true, leaderboard });
 }
 
@@ -50,14 +60,14 @@ export async function POST({ request }: APIEvent) {
 
   const entry: StoredPick = {
     userName,
-    winners: (body.winners as Record<string, string>) || {},
-    champion: (body.champion as string | null) ?? null,
+    winners: (body.winners as Record<string, number>) || {},
+    champion: (body.champion as number | null) ?? null,
     tiebreaker: (body.tiebreaker as number | null) ?? null,
     score: 0,
     updatedAt: Date.now(),
   };
 
-  const picks = getPicks();
+  const picks = getMockPicks();
   const idx = picks.findIndex((p) => p.userName === userName);
   if (idx >= 0) picks[idx] = entry;
   else picks.push(entry);

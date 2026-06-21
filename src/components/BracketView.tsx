@@ -1,5 +1,16 @@
 import { For, Show, createSignal } from "solid-js";
-import type { BracketConfig, ResolvedBracket, ResolvedMatch } from "~/lib/bracket";
+import type {
+  BracketConfig,
+  PickResult,
+  ResolvedBracket,
+  ResolvedMatch,
+} from "~/lib/bracket";
+import {
+  CHAMPION_PICK_ID,
+  LEFT_SEED_ORDER,
+  RIGHT_SEED_ORDER,
+  seedOpponent,
+} from "~/lib/bracket";
 
 type Props = {
   config: BracketConfig;
@@ -7,6 +18,8 @@ type Props = {
   interactive?: boolean;
   onPick?: (matchId: string, team: string) => void;
   onPickChampion?: (team: string) => void;
+  // Optional grading overlay: matchId -> correct/incorrect (used on /pick pages).
+  results?: Record<string, PickResult>;
 };
 
 export default function BracketView(props: Props) {
@@ -88,9 +101,18 @@ export default function BracketView(props: Props) {
   }) => {
     const m = mp.match;
     const isSeed = () => mp.r === 0;
+    const status = () => props.results?.[m.id];
     return (
       <div class="match">
-        <div class="rounded-md overflow-hidden border border-blue-700/40 bg-blue-950/40 shadow-md backdrop-blur-sm">
+        <div
+          class={`relative rounded-md overflow-hidden border shadow-md backdrop-blur-sm ${
+            status() === "correct"
+              ? "border-green-500/70 bg-green-950/30"
+              : status() === "incorrect"
+                ? "border-red-500/70 bg-red-950/30"
+                : "border-blue-700/40 bg-blue-950/40"
+          }`}
+        >
           <Slot
             side={mp.side}
             team={m.t1}
@@ -107,6 +129,19 @@ export default function BracketView(props: Props) {
             onPick={() => pick(m.id, m.t2)}
           />
         </div>
+        <Show when={status()}>
+          <span
+            class={`pointer-events-none absolute top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black shadow ${
+              mp.side === "left" ? "right-1" : "left-1"
+            } ${
+              status() === "correct"
+                ? "bg-green-500 text-black"
+                : "bg-red-500 text-white"
+            }`}
+          >
+            {status() === "correct" ? "✓" : "✗"}
+          </span>
+        </Show>
       </div>
     );
   };
@@ -152,22 +187,14 @@ export default function BracketView(props: Props) {
           </p>
         </div>
 
-        <div class="flex justify-center">
-          <div class="rounded-xl border border-slate-500/40 bg-linear-to-b from-slate-800/90 to-slate-950/90 px-5 py-2 text-center shadow-2xl">
-            <div class="flex items-center justify-center gap-1.5 text-lg font-black italic tracking-tight">
-              <span class="text-red-500">///</span>
-              <span class="text-white">802</span>
-              <span>🏎️</span>
-            </div>
-            <div class="-mt-0.5 text-xl sm:text-2xl font-black italic uppercase leading-none tracking-tighter text-white">
-              {props.config.titleLine1}
-            </div>
-            <div class="text-base sm:text-lg font-black italic uppercase leading-none tracking-widest text-white">
-              {props.config.titleLine2}
-            </div>
-            <div class="mt-0.5 text-[8px] font-bold uppercase tracking-[0.3em] text-cyan-400">
-              iRacing Leagues
-            </div>
+        <div class="flex flex-col items-center justify-center gap-3">
+          <img
+            src="/logo.jpg"
+            alt={`${props.config.titleLine1} ${props.config.titleLine2}`}
+            class="h-20 w-auto rounded-lg shadow-2xl sm:h-28"
+          />
+          <div class="text-sm sm:text-lg font-black italic uppercase leading-none tracking-widest text-white">
+            Bracket Challenge
           </div>
         </div>
 
@@ -221,9 +248,9 @@ export default function BracketView(props: Props) {
       </div>
 
       {/* Bracket field */}
-      <div class="flex items-stretch gap-2 min-h-[480px]">
+      <div class="flex items-stretch gap-2 min-h-[480px] overflow-hidden">
         {/* LEFT BRACKET */}
-        <div class="bracket left flex-1">
+        <div class="bracket left flex-1 min-w-0">
           <For each={props.bracket.left}>
             {(round, r) => (
               <div class="round">
@@ -233,8 +260,8 @@ export default function BracketView(props: Props) {
                       side="left"
                       r={r()}
                       match={match}
-                      seedHi={i() * 2 + 1}
-                      seedLo={i() * 2 + 2}
+                      seedHi={LEFT_SEED_ORDER[i()]}
+                      seedLo={seedOpponent(LEFT_SEED_ORDER[i()])}
                     />
                   )}
                 </For>
@@ -297,15 +324,28 @@ export default function BracketView(props: Props) {
                 interactive={props.interactive}
                 onPick={() => championPick(props.bracket.championship.t2)}
               />
-              <div class="pt-1 text-sm font-black italic text-yellow-400 text-shadow-glow">
+              <div class="truncate pt-1 text-sm font-black italic text-yellow-400 text-shadow-glow">
                 {props.bracket.championship.winner || "—"}
               </div>
+              <Show when={props.results?.[CHAMPION_PICK_ID]}>
+                <div
+                  class={`text-[9px] font-black uppercase tracking-widest ${
+                    props.results?.[CHAMPION_PICK_ID] === "correct"
+                      ? "text-green-400"
+                      : "text-red-400"
+                  }`}
+                >
+                  {props.results?.[CHAMPION_PICK_ID] === "correct"
+                    ? "✓ Correct champion"
+                    : "✗ Wrong champion"}
+                </div>
+              </Show>
             </div>
           </div>
         </div>
 
         {/* RIGHT BRACKET (rounds reversed so the final sits nearest center) */}
-        <div class="bracket right flex-1">
+        <div class="bracket right flex-1 min-w-0">
           <For each={props.bracket.right.slice().reverse()}>
             {(round, ri) => {
               const realR = () => props.bracket.right.length - 1 - ri();
@@ -317,8 +357,8 @@ export default function BracketView(props: Props) {
                         side="right"
                         r={realR()}
                         match={match}
-                        seedHi={i() * 2 + 17}
-                        seedLo={i() * 2 + 18}
+                        seedHi={RIGHT_SEED_ORDER[i()]}
+                        seedLo={seedOpponent(RIGHT_SEED_ORDER[i()])}
                       />
                     )}
                   </For>

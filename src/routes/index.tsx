@@ -13,12 +13,18 @@ export default function BracketPage() {
 
   return (
     <Frame>
-      <div class="mb-4 flex items-center justify-end">
+      <div class="mb-4 flex items-center justify-between gap-3">
         <A
-          href="/admin"
+          href="/picks"
+          class="rounded-md bg-linear-to-r from-cyan-500 to-blue-600 px-5 py-2 text-[12px] font-black uppercase tracking-widest text-black shadow-lg transition-all hover:brightness-110"
+        >
+          Make Your Picks →
+        </A>
+        <A
+          href="/leaderboard"
           class="text-[10px] font-mono tracking-widest text-slate-400 hover:text-cyan-300 transition-colors uppercase"
         >
-          Admin →
+          Leaderboard
         </A>
       </div>
 
