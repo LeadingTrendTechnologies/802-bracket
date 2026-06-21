@@ -10,8 +10,9 @@ import { defaultConfig, type BracketConfig } from "./bracket";
 const env = ((import.meta as unknown as { env?: Record<string, string> }).env) ?? {};
 const BASE = (env.VITE_API_BASE_URL as string) || "";
 
-const BRACKET_PATH = "/api/bracket"; // GET -> getBracket, POST -> createAdminBracket
-const PICKS_PATH = "/api/picks"; // GET -> leaderboard, POST -> submitPick
+const BRACKET_PATH = "/api/bracket"; // GET -> getBracket
+const ADMIN_BRACKET_PATH = "/api/bracket/admin"; // POST -> createAdminBracket
+const PICKS_PATH = "/api/bracket/pick"; // GET -> leaderboard, POST -> submitPick
 
 // Fields that mirror the editable columns on the Bracket model / BracketConfig.
 const EDITABLE_KEYS: (keyof BracketConfig)[] = [
@@ -61,7 +62,7 @@ export async function saveBracket(config: BracketConfig, slug = "default") {
   const body: Record<string, unknown> = { slug };
   for (const key of EDITABLE_KEYS) body[key] = config[key];
 
-  const res = await fetch(`${BASE}${BRACKET_PATH}`, {
+  const res = await fetch(`${BASE}${ADMIN_BRACKET_PATH}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

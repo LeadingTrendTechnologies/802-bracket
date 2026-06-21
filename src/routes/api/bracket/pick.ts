@@ -1,11 +1,12 @@
 import type { APIEvent } from "@solidjs/start/server";
+import { jsonResponse } from "~/lib/mockBracket";
 
 /*
- * MOCK endpoint mirroring the AWS Lambdas:
- *   POST /api/picks  -> submitPick.mjs   (create/update a participant's picks)
- *   GET  /api/picks  -> getBracket.mjs   (leaderboard view)
+ * MOCK of submitPick.mjs / leaderboard
+ *   POST /api/bracket/pick  -> create or update a participant's picks
+ *   GET  /api/bracket/pick  -> leaderboard
  *
- * In-memory per dev-server process (resets on restart).
+ * In-memory per dev-server process (held on globalThis).
  */
 type StoredPick = {
   userName: string;
@@ -16,19 +17,14 @@ type StoredPick = {
   updatedAt: number;
 };
 
-// Stored on globalThis so it survives dev-server module reloads between requests.
-const store = globalThis as unknown as { __mockPicks?: StoredPick[] };
-store.__mockPicks ??= [];
-const picks: StoredPick[] = store.__mockPicks;
-
-const json = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
+function getPicks(): StoredPick[] {
+  const g = globalThis as unknown as { __mockPicks?: StoredPick[] };
+  g.__mockPicks ??= [];
+  return g.__mockPicks;
+}
 
 export async function GET() {
-  const leaderboard = [...picks]
+  const leaderboard = [...getPicks()]
     .sort((a, b) => b.score - a.score || a.updatedAt - b.updatedAt)
     .map(({ userName, score, champion, updatedAt }) => ({
       userName,
@@ -36,7 +32,7 @@ export async function GET() {
       champion,
       updatedAt,
     }));
-  return json({ ok: true, leaderboard });
+  return jsonResponse({ ok: true, leaderboard });
 }
 
 export async function POST({ request }: APIEvent) {
@@ -48,7 +44,9 @@ export async function POST({ request }: APIEvent) {
   }
 
   const userName = typeof body.userName === "string" ? body.userName.trim() : "";
-  if (!userName) return json({ ok: false, error: "userName is required" }, 400);
+  if (!userName) {
+    return jsonResponse({ ok: false, error: "userName is required" }, 400);
+  }
 
   const entry: StoredPick = {
     userName,
@@ -59,9 +57,10 @@ export async function POST({ request }: APIEvent) {
     updatedAt: Date.now(),
   };
 
+  const picks = getPicks();
   const idx = picks.findIndex((p) => p.userName === userName);
   if (idx >= 0) picks[idx] = entry;
   else picks.push(entry);
 
-  return json({ ok: true, pick: entry });
+  return jsonResponse({ ok: true, pick: entry });
 }
