@@ -15,6 +15,9 @@ export type BracketConfig = {
   rightTrackSub: string;
   payout: string;
   weeklyNote: string;
+  // Where the tournament currently is, shown as a live banner on the public page.
+  currentRound: string;
+  currentTrack: string;
   leftSeeds: SeedPair[];
   rightSeeds: SeedPair[];
   // Results: match id -> winning team name, plus the grand champion
@@ -35,6 +38,8 @@ export const defaultConfig = (): BracketConfig => ({
   rightTrackSub: "Final Round",
   payout: "$50 CASH",
   weeklyNote: "Top 32 points \u00b7 seeded 1\u201332",
+  currentRound: "Round 1",
+  currentTrack: "",
   leftSeeds: Array.from({ length: 8 }, (_, i) => ({
     t1: `Seed ${i * 2 + 1}`,
     t2: `Seed ${i * 2 + 2}`,

@@ -26,6 +26,8 @@ const EDITABLE_KEYS: (keyof BracketConfig)[] = [
   "rightTrackSub",
   "payout",
   "weeklyNote",
+  "currentRound",
+  "currentTrack",
   "leftSeeds",
   "rightSeeds",
   "winners",

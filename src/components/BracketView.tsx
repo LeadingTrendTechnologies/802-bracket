@@ -1,4 +1,4 @@
-import { For, Show } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 import type { BracketConfig, ResolvedBracket, ResolvedMatch } from "~/lib/bracket";
 
 type Props = {
@@ -14,6 +14,16 @@ export default function BracketView(props: Props) {
     if (!props.interactive || !team || team === "TBD") return;
     props.onPick?.(matchId, team);
   };
+
+  // Cursor-following tooltip (rendered fixed at root so nothing clips it).
+  const [tip, setTip] = createSignal<{ text: string; x: number; y: number } | null>(
+    null,
+  );
+  const showTip = (text: string, e: MouseEvent) => {
+    if (!text || text === "TBD") return;
+    setTip({ text, x: e.clientX, y: e.clientY });
+  };
+  const hideTip = () => setTip(null);
 
   const Slot = (sp: {
     side: "left" | "right";
@@ -46,7 +56,14 @@ export default function BracketView(props: Props) {
             {sp.seed}
           </span>
         </Show>
-        <span class="truncate flex-1">{sp.team}</span>
+        <span
+          class="flex-1 min-w-0 truncate"
+          onMouseEnter={(e) => showTip(sp.team, e)}
+          onMouseMove={(e) => showTip(sp.team, e)}
+          onMouseLeave={hideTip}
+        >
+          {sp.team}
+        </span>
       </>
     );
 
@@ -164,6 +181,29 @@ export default function BracketView(props: Props) {
         </div>
       </div>
 
+      {/* Live now banner (public page only) */}
+      <Show when={!props.interactive && props.config.currentTrack?.trim()}>
+        <div class="mb-3 flex items-center justify-center gap-2 rounded-lg border border-green-500/40 bg-linear-to-r from-green-500/10 via-green-400/15 to-green-500/10 px-4 py-2 text-center shadow-lg">
+          <span class="relative flex h-2.5 w-2.5 shrink-0">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+            <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-400" />
+          </span>
+          <span class="text-[10px] font-black uppercase tracking-[0.25em] text-green-300">
+            Now Racing
+          </span>
+          <Show when={props.config.currentRound?.trim()}>
+            <span class="text-xs font-bold uppercase tracking-widest text-slate-300">
+              {props.config.currentRound}
+            </span>
+            <span class="text-slate-600">·</span>
+          </Show>
+          <span class="text-sm font-black italic uppercase tracking-wide text-white">
+            {props.config.currentTrack}
+          </span>
+          <span class="shrink-0">🏁</span>
+        </div>
+      </Show>
+
       {/* Track badges */}
       <div class="flex items-center justify-between mb-2">
         <TrackBadge
@@ -204,7 +244,7 @@ export default function BracketView(props: Props) {
         </div>
 
         {/* CENTER HUB */}
-        <div class="w-[220px] shrink-0 flex flex-col items-center justify-center gap-2.5 px-1">
+        <div class="w-[200px] shrink-0 flex flex-col items-center justify-center gap-2.5 px-1">
           <div class="w-full rounded-md border border-cyan-500/30 bg-cyan-500/5 px-3 py-2 text-center">
             <p class="text-[9px] font-black uppercase tracking-widest text-cyan-300">
               Weekly Challenge
@@ -298,6 +338,18 @@ export default function BracketView(props: Props) {
           Presented by <span class="text-red-500">///</span>802
         </span>
       </div>
+
+      {/* Hover tooltip showing the full driver name */}
+      <Show when={tip()}>
+        {(t) => (
+          <div
+            class="pointer-events-none fixed z-100 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl ring-1 ring-white/15"
+            style={{ left: `${t().x}px`, top: `${t().y - 10}px` }}
+          >
+            {t().text}
+          </div>
+        )}
+      </Show>
     </>
   );
 }
@@ -309,14 +361,21 @@ function ChampSlot(props: {
   onPick: () => void;
 }) {
   const isTbd = () => !props.team || props.team === "TBD";
-  const cls = `w-full rounded px-2 py-1.5 text-[11px] font-mono font-bold tracking-wide transition-colors ${
+  const cls = `w-full truncate rounded px-2 py-1.5 text-[11px] font-mono font-bold tracking-wide transition-colors ${
     props.active
       ? "bg-yellow-400 text-slate-950"
       : "bg-slate-900 text-slate-300"
   } ${props.interactive && !isTbd() ? "hover:bg-slate-800 cursor-pointer" : ""}`;
   return (
-    <Show when={props.interactive && !isTbd()} fallback={<div class={cls}>{props.team}</div>}>
-      <button type="button" class={cls} onClick={props.onPick}>
+    <Show
+      when={props.interactive && !isTbd()}
+      fallback={
+        <div class={cls} title={props.team}>
+          {props.team}
+        </div>
+      }
+    >
+      <button type="button" class={cls} title={props.team} onClick={props.onPick}>
         {props.team}
       </button>
     </Show>

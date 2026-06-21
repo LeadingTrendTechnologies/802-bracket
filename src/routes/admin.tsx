@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, Show, onMount, onCleanup } from "solid-js";
+import { createMemo, createSignal, Index, Show, onMount, onCleanup } from "solid-js";
 import { A } from "@solidjs/router";
 import Frame from "~/components/Frame";
 import BracketView from "~/components/BracketView";
@@ -13,22 +13,44 @@ import { getBracket, saveBracket } from "~/lib/api";
 export default function AdminPage() {
   const [config, setConfig] = createSignal<BracketConfig>(defaultConfig());
   const [savedTick, setSavedTick] = createSignal(0);
+  const [dirty, setDirty] = createSignal(false);
+  const [saving, setSaving] = createSignal(false);
   const bracket = createMemo(() => resolveBracket(config()));
 
+  // Initial load shouldn't count as an unsaved change.
   onMount(async () => setConfig(await getBracket()));
 
-  // Persist (debounced) so the public page reflects the latest on reload.
-  let saveTimer: ReturnType<typeof setTimeout> | undefined;
-  onCleanup(() => clearTimeout(saveTimer));
+  // Warn before leaving with unsaved edits.
+  onMount(() => {
+    const beforeUnload = (e: BeforeUnloadEvent) => {
+      if (dirty()) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    onCleanup(() => window.removeEventListener("beforeunload", beforeUnload));
+  });
 
+  // Local edits stage changes; nothing hits the DB until "Save Changes".
   const commit = (cfg: BracketConfig) => {
     setConfig(cfg);
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      saveBracket(cfg)
-        .then(() => setSavedTick(Date.now()))
-        .catch((err) => console.error(err));
-    }, 500);
+    setDirty(true);
+  };
+
+  const saveChanges = async () => {
+    if (saving() || !dirty()) return;
+    setSaving(true);
+    try {
+      await saveBracket(config());
+      setDirty(false);
+      setSavedTick(Date.now());
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save changes. Check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const patch = (p: Partial<BracketConfig>) => commit({ ...config(), ...p });
@@ -93,14 +115,24 @@ export default function AdminPage() {
           ← View Public Bracket
         </A>
         <div class="flex items-center gap-3">
-          <Show when={savedTick() > 0}>
+          <Show when={dirty()}>
+            <span class="text-[10px] font-mono uppercase tracking-widest text-amber-400">
+              ● Unsaved changes
+            </span>
+          </Show>
+          <Show when={!dirty() && savedTick() > 0}>
             <span class="text-[10px] font-mono uppercase tracking-widest text-green-400">
               ✓ Saved
             </span>
           </Show>
-          <span class="text-[10px] font-mono tracking-widest text-slate-600 uppercase">
-            League Control
-          </span>
+          <button
+            type="button"
+            onClick={saveChanges}
+            disabled={!dirty() || saving()}
+            class="rounded-md bg-linear-to-r from-cyan-500 to-blue-600 px-4 py-1.5 text-[11px] font-black uppercase tracking-widest text-black shadow-lg transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            {saving() ? "Saving…" : "Save Changes"}
+          </button>
         </div>
       </div>
 
@@ -109,8 +141,9 @@ export default function AdminPage() {
           Admin · Set Results &amp; Info
         </h1>
         <p class="mt-1 text-[11px] tracking-wide text-slate-400">
-          Click drivers to advance them. Everything here saves automatically and
-          updates the public bracket on reload.
+          Click drivers to advance them, then hit{" "}
+          <span class="font-bold text-cyan-300">Save Changes</span> to publish to
+          the public bracket.
         </p>
       </div>
 
@@ -130,6 +163,23 @@ export default function AdminPage() {
           <h2 class="mb-3 text-[11px] font-bold font-mono uppercase tracking-widest text-cyan-300">
             Event Info
           </h2>
+          <div class="mb-3 rounded-lg border border-green-600/40 bg-green-950/20 p-3">
+            <p class="mb-2 text-[10px] font-bold font-mono uppercase tracking-widest text-green-300">
+              Live Now · shown as a banner on the public bracket
+            </p>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field
+                label="Current round"
+                value={() => config().currentRound}
+                onInput={(v) => patch({ currentRound: v })}
+              />
+              <Field
+                label="Current track / location"
+                value={() => config().currentTrack}
+                onInput={(v) => patch({ currentTrack: v })}
+              />
+            </div>
+          </div>
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               label="Title line 1"
@@ -194,31 +244,33 @@ export default function AdminPage() {
               Left Bracket · Seeds 1–16
             </h2>
             <div class="space-y-2">
-              <For each={config().leftSeeds}>
+              <Index each={config().leftSeeds}>
                 {(pair, i) => (
                   <div class="grid grid-cols-[1.25rem_1fr_1fr] items-center gap-2">
                     <span class="text-center text-[10px] font-black text-blue-400">
-                      {i() + 1}
+                      {i + 1}
                     </span>
                     <input
                       type="text"
+                      title={pair().t1}
                       class="rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs font-mono focus:border-cyan-500 focus:outline-none"
-                      value={pair.t1}
+                      value={pair().t1}
                       onInput={(e) =>
-                        updateSeed("leftSeeds", i(), "t1", e.currentTarget.value)
+                        updateSeed("leftSeeds", i, "t1", e.currentTarget.value)
                       }
                     />
                     <input
                       type="text"
+                      title={pair().t2}
                       class="rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs font-mono focus:border-cyan-500 focus:outline-none"
-                      value={pair.t2}
+                      value={pair().t2}
                       onInput={(e) =>
-                        updateSeed("leftSeeds", i(), "t2", e.currentTarget.value)
+                        updateSeed("leftSeeds", i, "t2", e.currentTarget.value)
                       }
                     />
                   </div>
                 )}
-              </For>
+              </Index>
             </div>
           </div>
 
@@ -227,31 +279,33 @@ export default function AdminPage() {
               Right Bracket · Seeds 17–32
             </h2>
             <div class="space-y-2">
-              <For each={config().rightSeeds}>
+              <Index each={config().rightSeeds}>
                 {(pair, i) => (
                   <div class="grid grid-cols-[1.5rem_1fr_1fr] items-center gap-2">
                     <span class="text-center text-[10px] font-black text-red-400">
-                      {i() + 9}
+                      {i + 9}
                     </span>
                     <input
                       type="text"
+                      title={pair().t1}
                       class="rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs font-mono focus:border-red-500 focus:outline-none"
-                      value={pair.t1}
+                      value={pair().t1}
                       onInput={(e) =>
-                        updateSeed("rightSeeds", i(), "t1", e.currentTarget.value)
+                        updateSeed("rightSeeds", i, "t1", e.currentTarget.value)
                       }
                     />
                     <input
                       type="text"
+                      title={pair().t2}
                       class="rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs font-mono focus:border-red-500 focus:outline-none"
-                      value={pair.t2}
+                      value={pair().t2}
                       onInput={(e) =>
-                        updateSeed("rightSeeds", i(), "t2", e.currentTarget.value)
+                        updateSeed("rightSeeds", i, "t2", e.currentTarget.value)
                       }
                     />
                   </div>
                 )}
-              </For>
+              </Index>
             </div>
           </div>
         </section>
@@ -273,12 +327,14 @@ export default function AdminPage() {
             >
               Reset All
             </button>
-            <A
-              href="/"
-              class="rounded-md bg-linear-to-r from-cyan-500 to-blue-600 px-6 py-2 text-[12px] font-black uppercase tracking-widest text-black shadow-lg transition-all hover:brightness-110"
+            <button
+              type="button"
+              onClick={saveChanges}
+              disabled={!dirty() || saving()}
+              class="rounded-md bg-linear-to-r from-cyan-500 to-blue-600 px-6 py-2 text-[12px] font-black uppercase tracking-widest text-black shadow-lg transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30"
             >
-              View Public →
-            </A>
+              {saving() ? "Saving…" : "Save Changes"}
+            </button>
           </div>
         </div>
       </div>
