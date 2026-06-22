@@ -177,7 +177,7 @@ export default function BracketView(props: Props) {
   return (
     <>
       {/* Header row (stacks on mobile, 3 columns on larger screens) */}
-      <div class="mb-4 flex flex-col items-center gap-3 sm:grid sm:grid-cols-3 sm:items-center sm:gap-2">
+      <div class="mb-4 flex flex-col items-center gap-6 sm:grid sm:grid-cols-3 sm:items-center sm:gap-2">
         <div class="text-center sm:text-left">
           <p class="text-sm sm:text-xl font-black italic uppercase leading-none text-white">
             Starts
