@@ -232,16 +232,6 @@ export default function AdminPage() {
           </div>
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
-              label="Title line 1"
-              value={() => config().titleLine1}
-              onInput={(v) => patch({ titleLine1: v })}
-            />
-            <Field
-              label="Title line 2"
-              value={() => config().titleLine2}
-              onInput={(v) => patch({ titleLine2: v })}
-            />
-            <Field
               label="Start info (left header)"
               value={() => config().startInfo}
               onInput={(v) => patch({ startInfo: v })}

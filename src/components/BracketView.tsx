@@ -190,7 +190,7 @@ export default function BracketView(props: Props) {
         <div class="flex flex-col items-center justify-center gap-3">
           <img
             src="/logo.jpg"
-            alt={`${props.config.titleLine1} ${props.config.titleLine2}`}
+            alt="802 NextGen Elite Series"
             class="h-20 w-auto rounded-lg shadow-2xl sm:h-28"
           />
           <div class="text-sm sm:text-lg font-black italic uppercase leading-none tracking-widest text-white">

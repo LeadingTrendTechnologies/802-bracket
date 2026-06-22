@@ -16,8 +16,6 @@ const PICKS_PATH = "/api/bracket/pick"; // POST -> submitPick, GET -> leaderboar
 
 // Fields that mirror the editable columns on the Bracket model / BracketConfig.
 const EDITABLE_KEYS: (keyof BracketConfig)[] = [
-  "titleLine1",
-  "titleLine2",
   "startInfo",
   "finalInfo",
   "leftTrack",

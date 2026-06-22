@@ -86,8 +86,6 @@ export const listToSeeds = (
 };
 
 export type BracketConfig = {
-  titleLine1: string;
-  titleLine2: string;
   startInfo: string;
   finalInfo: string;
   leftTrack: string;
@@ -111,8 +109,6 @@ export type BracketConfig = {
 export const STORAGE_KEY = "802-bracket-config";
 
 export const defaultConfig = (): BracketConfig => ({
-  titleLine1: "NextGen Bracket",
-  titleLine2: "Challenge",
   startInfo: "June 25th @ Texas",
   finalInfo: "At Indianapolis",
   leftTrack: "Texas Motor Speedway",

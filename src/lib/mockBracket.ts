@@ -12,8 +12,6 @@ export type StoredBracket = BracketConfig & {
 };
 
 export const EDITABLE_KEYS: (keyof BracketConfig)[] = [
-  "titleLine1",
-  "titleLine2",
   "startInfo",
   "finalInfo",
   "leftTrack",
