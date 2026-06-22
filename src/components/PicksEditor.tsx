@@ -209,11 +209,11 @@ export default function PicksEditor(props: {
           </Show>
         }
       >
-        <div class="mx-auto mb-5 flex max-w-2xl flex-wrap items-center justify-center gap-3 rounded-xl border border-slate-700/60 bg-slate-900/50 p-3">
+        <div class="mx-auto mb-5 flex max-w-2xl flex-col items-stretch justify-center gap-3 rounded-xl border border-slate-700/60 bg-slate-900/50 p-3 sm:flex-row sm:flex-wrap sm:items-center">
           <Show
             when={!props.lockName}
             fallback={
-              <span class="min-w-0 flex-1 truncate px-1 text-sm font-black uppercase tracking-wide text-white">
+              <span class="truncate px-1 text-center text-sm font-black uppercase tracking-wide text-white sm:flex-1 sm:text-left">
                 {props.initialName}
               </span>
             }
@@ -223,28 +223,30 @@ export default function PicksEditor(props: {
               placeholder="Your name"
               value={userName()}
               onInput={(e) => setUserName(e.currentTarget.value)}
-              class="min-w-0 flex-1 rounded border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-sm font-mono text-white placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none"
+              class="min-w-0 rounded border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-sm font-mono text-white placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none sm:flex-1"
             />
           </Show>
-          <button
-            type="button"
-            onClick={resetPicks}
-            class="rounded-md border border-slate-700 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-400 transition-colors hover:border-red-700 hover:text-red-400"
-          >
-            Reset
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={status() === "saving"}
-            class="rounded-md bg-linear-to-r from-cyan-500 to-blue-600 px-5 py-1.5 text-[12px] font-black uppercase tracking-widest text-black shadow-lg transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {status() === "saving"
-              ? "Saving…"
-              : props.lockName
-                ? "Save Changes"
-                : "Submit Picks"}
-          </button>
+          <div class="flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={resetPicks}
+              class="flex-1 rounded-md border border-slate-700 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-400 transition-colors hover:border-red-700 hover:text-red-400 sm:flex-none"
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={status() === "saving"}
+              class="flex-1 rounded-md bg-linear-to-r from-cyan-500 to-blue-600 px-5 py-1.5 text-[12px] font-black uppercase tracking-widest text-black shadow-lg transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
+            >
+              {status() === "saving"
+                ? "Saving…"
+                : props.lockName
+                  ? "Save Changes"
+                  : "Submit Picks"}
+            </button>
+          </div>
           <div class="w-full text-center">
             <Show when={status() === "saved"}>
               <span class="text-[11px] font-mono uppercase tracking-widest text-green-400">
