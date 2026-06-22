@@ -248,7 +248,10 @@ export default function BracketView(props: Props) {
       </div>
 
       {/* Bracket field */}
-      <div class="flex items-stretch gap-2 min-h-[480px] overflow-hidden">
+      {/* On phones/tablets the full bracket scrolls horizontally; on large
+          screens it fits the frame. */}
+      <div class="-mx-1 overflow-x-auto px-1 custom-scrollbar">
+      <div class="flex items-stretch gap-2 min-h-[480px] min-w-[1400px] lg:min-w-0">
         {/* LEFT BRACKET */}
         <div class="bracket left flex-1 min-w-0">
           <For each={props.bracket.left}>
@@ -367,6 +370,7 @@ export default function BracketView(props: Props) {
             }}
           </For>
         </div>
+      </div>
       </div>
 
       {/* Bottom banner */}

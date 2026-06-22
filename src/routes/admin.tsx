@@ -286,7 +286,7 @@ export default function AdminPage() {
             Type names in seed order — the first name is the #1 seed. Deleting a
             driver shifts everyone below up a seed and frees the last spot.
           </p>
-          <div class="grid grid-flow-col grid-rows-[repeat(16,minmax(0,auto))] gap-x-8 gap-y-1.5">
+          <div class="grid grid-cols-1 gap-x-8 gap-y-1.5 sm:grid-flow-col sm:grid-rows-[repeat(16,minmax(0,auto))]">
             <Index each={seedList()}>
               {(name, i) => (
                 <div class="flex items-center gap-2">

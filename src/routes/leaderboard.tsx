@@ -75,7 +75,7 @@ export default function LeaderboardPage() {
             }
           >
             <div class="overflow-hidden rounded-xl border border-slate-700/60">
-              <div class="grid grid-cols-[2.5rem_1fr_5rem_5rem] gap-2 border-b border-slate-700/60 bg-slate-900/70 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <div class="grid grid-cols-[2rem_1fr_3.5rem_4rem] gap-2 border-b border-slate-700/60 bg-slate-900/70 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 sm:grid-cols-[2.5rem_1fr_5rem_5rem] sm:px-4">
                 <span>#</span>
                 <span>Bracket</span>
                 <span class="text-right">Correct</span>
@@ -85,7 +85,7 @@ export default function LeaderboardPage() {
                 {(row, i) => (
                   <A
                     href={`/pick/${encodeURIComponent(row.userName)}`}
-                    class="grid grid-cols-[2.5rem_1fr_5rem_5rem] items-center gap-2 border-b border-slate-800/60 bg-slate-950/40 px-4 py-2.5 transition-colors last:border-0 hover:bg-slate-800/40"
+                    class="grid grid-cols-[2rem_1fr_3.5rem_4rem] items-center gap-2 border-b border-slate-800/60 bg-slate-950/40 px-3 py-2.5 transition-colors last:border-0 hover:bg-slate-800/40 sm:grid-cols-[2.5rem_1fr_5rem_5rem] sm:px-4"
                   >
                     <span class={`text-sm font-black tabular-nums ${rankColor(i())}`}>
                       {i() + 1}
