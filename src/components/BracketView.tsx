@@ -176,9 +176,9 @@ export default function BracketView(props: Props) {
 
   return (
     <>
-      {/* Header row */}
-      <div class="grid grid-cols-3 items-center gap-2 mb-4">
-        <div class="text-left">
+      {/* Header row (stacks on mobile, 3 columns on larger screens) */}
+      <div class="mb-4 flex flex-col items-center gap-3 sm:grid sm:grid-cols-3 sm:items-center sm:gap-2">
+        <div class="text-center sm:text-left">
           <p class="text-sm sm:text-xl font-black italic uppercase leading-none text-white">
             Starts
           </p>
@@ -187,7 +187,7 @@ export default function BracketView(props: Props) {
           </p>
         </div>
 
-        <div class="flex flex-col items-center justify-center gap-3">
+        <div class="order-first flex flex-col items-center justify-center gap-3 sm:order-none">
           <img
             src="/logo.jpg"
             alt="802 NextGen Elite Series"
@@ -198,7 +198,7 @@ export default function BracketView(props: Props) {
           </div>
         </div>
 
-        <div class="text-right">
+        <div class="text-center sm:text-right">
           <p class="text-sm sm:text-xl font-black italic uppercase leading-none text-white">
             Final Round Hosted
           </p>
@@ -210,24 +210,28 @@ export default function BracketView(props: Props) {
 
       {/* Live now banner (public page only) */}
       <Show when={!props.interactive && props.config.currentTrack?.trim()}>
-        <div class="mb-3 flex items-center justify-center gap-2 rounded-lg border border-green-500/40 bg-linear-to-r from-green-500/10 via-green-400/15 to-green-500/10 px-4 py-2 text-center shadow-lg">
-          <span class="relative flex h-2.5 w-2.5 shrink-0">
-            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-            <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-400" />
-          </span>
-          <span class="text-[10px] font-black uppercase tracking-[0.25em] text-green-300">
-            Now Racing
+        <div class="mb-3 flex flex-col items-center justify-center gap-1 rounded-lg border border-green-500/40 bg-linear-to-r from-green-500/10 via-green-400/15 to-green-500/10 px-4 py-2 text-center shadow-lg sm:flex-row sm:gap-2">
+          <span class="flex items-center gap-2">
+            <span class="relative flex h-2.5 w-2.5 shrink-0">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+              <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-400" />
+            </span>
+            <span class="text-[10px] font-black uppercase tracking-[0.25em] text-green-300">
+              Now Racing
+            </span>
           </span>
           <Show when={props.config.currentRound?.trim()}>
             <span class="text-xs font-bold uppercase tracking-widest text-slate-300">
               {props.config.currentRound}
             </span>
-            <span class="text-slate-600">·</span>
+            <span class="hidden text-slate-600 sm:inline">·</span>
           </Show>
-          <span class="text-sm font-black italic uppercase tracking-wide text-white">
-            {props.config.currentTrack}
+          <span class="flex items-center gap-1.5">
+            <span class="text-sm font-black italic uppercase tracking-wide text-white">
+              {props.config.currentTrack}
+            </span>
+            <span class="shrink-0">🏁</span>
           </span>
-          <span class="shrink-0">🏁</span>
         </div>
       </Show>
 
@@ -378,7 +382,7 @@ export default function BracketView(props: Props) {
         <span class="text-lg sm:text-xl font-black italic uppercase tracking-[0.25em] text-white">
           iRacing Leagues
         </span>
-        <span class="ml-3 text-[9px] font-bold uppercase tracking-[0.3em] text-cyan-400">
+        <span class="mt-1 block text-[9px] font-bold uppercase tracking-[0.3em] text-cyan-400 sm:mt-0 sm:ml-3 sm:inline">
           Presented by <span class="text-red-500">///</span>802
         </span>
       </div>
