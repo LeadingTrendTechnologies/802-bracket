@@ -123,7 +123,7 @@ export const defaultConfig = (): BracketConfig => ({
   // Ordered to match the seeded bracket layout (t1 = top seed, t2 = 33 - seed).
   leftSeeds: [
     { t1: "Mark Whitley", t2: "Johnny Wood Jr" }, // 1 v 32
-    { t1: "Kevin Tipton", t2: "Micheal Wollf" }, // 16 v 17
+    { t1: "Kevin Tipton", t2: "Micheal Woolf" }, // 16 v 17
     { t1: "Chris Muise", t2: "Arabia Cayton III" }, // 8 v 25
     { t1: "Jim Ott", t2: "David Durand" }, // 9 v 24
     { t1: "Scott Simley", t2: "Tyler Ducharme" }, // 4 v 29
@@ -139,7 +139,7 @@ export const defaultConfig = (): BracketConfig => ({
     { t1: "Rob Lowell", t2: "Connor Patton" }, // 3 v 30
     { t1: "Devin Mccaffrey", t2: "Derek Mcdonald" }, // 14 v 19
     { t1: "Steve Ritter", t2: "Logan Troyer" }, // 6 v 27
-    { t1: "Brett Hahne", t2: "Keith Ayers" }, // 11 v 22
+    { t1: "Brett Hahn", t2: "Keith Ayers" }, // 11 v 22
   ],
   winners: {},
   champion: null,
