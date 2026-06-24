@@ -13,6 +13,7 @@ const BASE = (env.VITE_API_BASE_URL as string) || "";
 const BRACKET_PATH = "/api/bracket"; // GET -> getBracket
 const ADMIN_BRACKET_PATH = "/api/bracket/admin"; // POST -> createAdminBracket
 const PICKS_PATH = "/api/bracket/pick"; // POST -> submitPick, GET -> leaderboard
+const RESULTS_PATH = "/api/bracket/results"; // POST -> applyResults
 
 // Fields that mirror the editable columns on the Bracket model / BracketConfig.
 const EDITABLE_KEYS: (keyof BracketConfig)[] = [
@@ -136,4 +137,39 @@ export async function getLeaderboard(slug = "default"): Promise<LeaderboardRow[]
   } catch {
     return [];
   }
+}
+
+export type UndecidedMatch = { id: string; t1: string; t2: string };
+
+export type ApplyResultsResponse = {
+  bracket: BracketConfig;
+  updated: number;
+  round: number | "final" | null;
+  undecided: UndecidedMatch[];
+};
+
+/*
+ * Upload a JSON/CSV race-results file. The backend parses it, fills in the
+ * current round's winners, and returns the updated official bracket.
+ */
+export async function applyResults(
+  content: string,
+  slug = "default",
+): Promise<ApplyResultsResponse> {
+  const res = await fetch(`${BASE}${RESULTS_PATH}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slug, content }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}) as { error?: string });
+    throw new Error(err.error || `applyResults failed (${res.status})`);
+  }
+  const data = await res.json();
+  return {
+    bracket: toConfig(data.bracket),
+    updated: (data.updated as number) ?? 0,
+    round: (data.round as number | "final" | null) ?? null,
+    undecided: (data.undecided as UndecidedMatch[]) ?? [],
+  };
 }

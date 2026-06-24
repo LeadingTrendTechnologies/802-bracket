@@ -171,3 +171,31 @@ body {
 .text-shadow-glow {
   text-shadow: 0 0 14px rgba(56, 189, 248, 0.55);
 }
+
+/* ============================================================
+   Loading skeleton (shimmer)
+   ============================================================ */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.07) 25%,
+    rgba(125, 211, 252, 0.22) 50%,
+    rgba(148, 163, 184, 0.07) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s linear infinite;
+  border-radius: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

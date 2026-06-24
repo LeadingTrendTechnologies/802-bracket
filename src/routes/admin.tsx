@@ -1,7 +1,16 @@
-import { createMemo, createSignal, Index, Show, onMount, onCleanup } from "solid-js";
+import {
+  createMemo,
+  createSignal,
+  For,
+  Index,
+  Show,
+  onMount,
+  onCleanup,
+} from "solid-js";
 import { A } from "@solidjs/router";
 import Frame from "~/components/Frame";
 import BracketView from "~/components/BracketView";
+import BracketSkeleton from "~/components/BracketSkeleton";
 import {
   defaultConfig,
   resolveBracket,
@@ -13,17 +22,30 @@ import {
   LEFT_SEED_SET,
   type BracketConfig,
 } from "~/lib/bracket";
-import { getBracket, saveBracket } from "~/lib/api";
+import { getBracket, saveBracket, applyResults } from "~/lib/api";
 
 export default function AdminPage() {
   const [config, setConfig] = createSignal<BracketConfig>(defaultConfig());
   const [savedTick, setSavedTick] = createSignal(0);
   const [dirty, setDirty] = createSignal(false);
   const [saving, setSaving] = createSignal(false);
+  const [loading, setLoading] = createSignal(true);
+  const [uploading, setUploading] = createSignal(false);
+  const [resultMsg, setResultMsg] = createSignal("");
+  const [resultErr, setResultErr] = createSignal(false);
+  const [undecided, setUndecided] = createSignal<
+    { id: string; t1: string; t2: string }[]
+  >([]);
   const bracket = createMemo(() => resolveBracket(config()));
 
   // Initial load shouldn't count as an unsaved change.
-  onMount(async () => setConfig(await getBracket()));
+  onMount(async () => {
+    try {
+      setConfig(await getBracket());
+    } finally {
+      setLoading(false);
+    }
+  });
 
   // Warn before leaving with unsaved edits.
   onMount(() => {
@@ -94,6 +116,53 @@ export default function AdminPage() {
     if (confirm("Reset EVERYTHING to defaults?")) commit(defaultConfig());
   };
 
+  // Upload a JSON/CSV results file -> backend fills in the current round.
+  const handleResultsFile = async (input: HTMLInputElement) => {
+    const file = input.files?.[0];
+    if (!file) return;
+    if (dirty()) {
+      alert(
+        "You have unsaved changes. Save (or discard) them before uploading results so they apply to the published bracket.",
+      );
+      input.value = "";
+      return;
+    }
+    setUploading(true);
+    setResultMsg("");
+    setResultErr(false);
+    setUndecided([]);
+    try {
+      const text = await file.text();
+      const {
+        bracket: updatedCfg,
+        updated,
+        round,
+        undecided: pending,
+      } = await applyResults(text);
+      setConfig(updatedCfg);
+      setDirty(false);
+      setSavedTick(Date.now());
+      setUndecided(pending);
+      const where =
+        round === "final"
+          ? "the championship"
+          : round != null
+            ? `round ${round + 1}`
+            : "the bracket";
+      setResultMsg(
+        updated > 0
+          ? `Applied ${updated} result${updated === 1 ? "" : "s"} to ${where}.`
+          : "File read, but no matchups in the current round could be decided from it.",
+      );
+    } catch (err) {
+      setResultErr(true);
+      setResultMsg(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+      input.value = "";
+    }
+  };
+
   const Field = (props: {
     label: string;
     value: () => string;
@@ -158,6 +227,7 @@ export default function AdminPage() {
         </p>
       </div>
 
+      <Show when={!loading()} fallback={<BracketSkeleton />}>
       {/* Interactive bracket */}
       <BracketView
         config={config()}
@@ -320,6 +390,103 @@ export default function AdminPage() {
           </div>
         </section>
 
+        {/* Upload race results */}
+        <section class="mb-8 rounded-xl border border-slate-700/60 bg-slate-900/40 p-4">
+          <h2 class="text-[11px] font-bold font-mono uppercase tracking-widest text-cyan-300">
+            Upload Race Results
+          </h2>
+          <p class="mb-4 mt-1 text-[11px] leading-relaxed tracking-wide text-slate-400">
+            Drop in a{" "}
+            <span class="font-bold text-slate-300">.json</span> or{" "}
+            <span class="font-bold text-slate-300">.csv</span> file of finishing
+            results for the <span class="font-bold text-cyan-300">current
+            round</span>. We auto-advance the winner of each matchup. Any driver
+            missing from the file is treated as a loss, so their opponent
+            advances. Match on <span class="font-mono">seed</span> or{" "}
+            <span class="font-mono">name</span>; include a{" "}
+            <span class="font-mono">position</span> column to break head-to-head
+            matchups. This saves to the published bracket immediately.
+          </p>
+
+          <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+            <label
+              class={`inline-flex cursor-pointer items-center justify-center rounded-md border border-cyan-600/60 bg-cyan-500/10 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-500/20 ${
+                uploading() ? "pointer-events-none opacity-50" : ""
+              }`}
+            >
+              {uploading() ? "Processing…" : "Choose Results File"}
+              <input
+                type="file"
+                accept=".json,.csv,application/json,text/csv,text/plain"
+                class="hidden"
+                disabled={uploading()}
+                onChange={(e) => handleResultsFile(e.currentTarget)}
+              />
+            </label>
+            <Show when={resultMsg()}>
+              <span
+                class={`text-[11px] font-mono ${
+                  resultErr() ? "text-red-400" : "text-green-400"
+                }`}
+              >
+                {resultMsg()}
+              </span>
+            </Show>
+          </div>
+
+          {/* Matchups the file couldn't decide (neither driver was listed) */}
+          <Show when={undecided().length > 0}>
+            <div class="mt-4 rounded-lg border border-amber-600/50 bg-amber-950/25 p-3">
+              <p class="mb-2 text-[11px] font-bold font-mono uppercase tracking-widest text-amber-300">
+                ⚠ {undecided().length} matchup
+                {undecided().length === 1 ? "" : "s"} need a manual pick
+              </p>
+              <p class="mb-3 text-[11px] leading-relaxed text-slate-400">
+                Neither driver appeared in the file, so no winner could be set.
+                Click the winner for each below in the bracket above, then hit{" "}
+                <span class="font-bold text-cyan-300">Save Changes</span>.
+              </p>
+              <ul class="space-y-1.5">
+                <For each={undecided()}>
+                  {(m) => (
+                    <li class="flex items-center gap-2 text-[11px] font-mono text-slate-200">
+                      <span class="rounded bg-slate-800/80 px-2 py-0.5">
+                        {m.t1}
+                      </span>
+                      <span class="text-slate-500">vs</span>
+                      <span class="rounded bg-slate-800/80 px-2 py-0.5">
+                        {m.t2}
+                      </span>
+                      <Show when={m.id === "champion"}>
+                        <span class="text-[9px] uppercase tracking-widest text-amber-400">
+                          Championship
+                        </span>
+                      </Show>
+                    </li>
+                  )}
+                </For>
+              </ul>
+            </div>
+          </Show>
+
+          <details class="mt-4 text-[11px] text-slate-400">
+            <summary class="cursor-pointer font-mono uppercase tracking-widest text-slate-500 hover:text-slate-300">
+              Accepted formats
+            </summary>
+            <div class="mt-2 space-y-2">
+              <p>JSON — array of names/seeds, or objects:</p>
+              <pre class="overflow-x-auto rounded bg-slate-950/70 p-2 font-mono text-[10px] text-slate-300">{`[
+  { "seed": 1,  "position": 1 },
+  { "name": "Kevin Tipton", "position": 3 }
+]`}</pre>
+              <p>CSV — with a header row:</p>
+              <pre class="overflow-x-auto rounded bg-slate-950/70 p-2 font-mono text-[10px] text-slate-300">{`seed,name,position
+1,Mark Whitley,1
+16,Kevin Tipton,2`}</pre>
+            </div>
+          </details>
+        </section>
+
         {/* Actions */}
         <div class="flex items-center justify-between gap-3">
           <button
@@ -348,6 +515,7 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+      </Show>
     </Frame>
   );
 }

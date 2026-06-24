@@ -2,6 +2,7 @@ import { createMemo, createSignal, onMount, Show } from "solid-js";
 import { A } from "@solidjs/router";
 import Frame from "~/components/Frame";
 import BracketView from "~/components/BracketView";
+import BracketSkeleton from "~/components/BracketSkeleton";
 import {
   defaultConfig,
   gradePicks,
@@ -34,8 +35,15 @@ export default function PicksEditor(props: {
   const [userName, setUserName] = createSignal(props.initialName ?? "");
   const [status, setStatus] = createSignal<Status>("idle");
   const [error, setError] = createSignal("");
+  const [loading, setLoading] = createSignal(true);
 
-  onMount(async () => setConfig(await getBracket()));
+  onMount(async () => {
+    try {
+      setConfig(await getBracket());
+    } finally {
+      setLoading(false);
+    }
+  });
 
   const nameList = createMemo(() =>
     seedsToList(config().leftSeeds, config().rightSeeds),
@@ -178,6 +186,7 @@ export default function PicksEditor(props: {
         </p>
       </div>
 
+      <Show when={!loading()} fallback={<BracketSkeleton />}>
       {/* Read-only / locked notice OR submission bar */}
       <Show
         when={editable()}
@@ -293,6 +302,7 @@ export default function PicksEditor(props: {
         onPickChampion={onPickChampion}
         results={grade().results}
       />
+      </Show>
     </Frame>
   );
 }

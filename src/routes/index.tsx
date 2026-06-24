@@ -1,15 +1,23 @@
-import { createMemo, createSignal, onMount } from "solid-js";
+import { createMemo, createSignal, onMount, Show } from "solid-js";
 import { A } from "@solidjs/router";
 import Frame from "~/components/Frame";
 import BracketView from "~/components/BracketView";
+import BracketSkeleton from "~/components/BracketSkeleton";
 import { defaultConfig, resolveBracket } from "~/lib/bracket";
 import { getBracket } from "~/lib/api";
 
 export default function BracketPage() {
   const [config, setConfig] = createSignal(defaultConfig());
+  const [loading, setLoading] = createSignal(true);
   const bracket = createMemo(() => resolveBracket(config()));
 
-  onMount(async () => setConfig(await getBracket()));
+  onMount(async () => {
+    try {
+      setConfig(await getBracket());
+    } finally {
+      setLoading(false);
+    }
+  });
 
   return (
     <Frame>
@@ -28,7 +36,9 @@ export default function BracketPage() {
         </A>
       </div>
 
-      <BracketView config={config()} bracket={bracket()} />
+      <Show when={!loading()} fallback={<BracketSkeleton />}>
+        <BracketView config={config()} bracket={bracket()} />
+      </Show>
     </Frame>
   );
 }
