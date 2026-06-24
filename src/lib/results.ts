@@ -45,6 +45,61 @@ const toNum = (v: unknown): number | undefined => {
 const normalizeName = (n: string): string =>
   n.toLowerCase().trim().replace(/\s*\d+$/, "").trim();
 
+// Name suffixes ignored when comparing first/last name tokens.
+const NAME_SUFFIXES = new Set(["jr", "sr", "ii", "iii", "iv", "v"]);
+
+const tokenizeName = (n: string): string[] =>
+  normalizeName(n)
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((t) => t && !NAME_SUFFIXES.has(t));
+
+/*
+ * Build a name -> seed matcher from the seed-ordered name list. Tries an exact
+ * (normalized) match first, then a fuzzy fallback: same LAST name where one
+ * first name is a prefix/nickname of the other (e.g. "Christopher Muise" ->
+ * "Chris Muise"). The fuzzy match is only used when exactly one bracket driver
+ * qualifies, so ambiguous names are never guessed.
+ */
+const buildSeedMatcher = (nameList: string[]) => {
+  type Entry = { seed: number; first: string; last: string };
+  const entries: Entry[] = [];
+  const exact = new Map<string, number>();
+  nameList.forEach((n, i) => {
+    if (!n) return;
+    const toks = tokenizeName(n);
+    if (!toks.length) return;
+    const seed = i + 1;
+    const key = toks.join(" ");
+    if (!exact.has(key)) exact.set(key, seed);
+    entries.push({ seed, first: toks[0], last: toks[toks.length - 1] });
+  });
+
+  return (name: string): number | undefined => {
+    const toks = tokenizeName(name);
+    if (!toks.length) return undefined;
+    const hit = exact.get(toks.join(" "));
+    if (hit != null) return hit;
+
+    const first = toks[0];
+    const last = toks[toks.length - 1];
+    let found: number | undefined;
+    let count = 0;
+    for (const ent of entries) {
+      if (ent.last !== last) continue;
+      if (
+        ent.first === first ||
+        ent.first.startsWith(first) ||
+        first.startsWith(ent.first)
+      ) {
+        found = ent.seed;
+        count++;
+      }
+    }
+    return count === 1 ? found : undefined;
+  };
+};
+
 // Map an arbitrary column / property name to one of our known fields.
 const fieldOf = (header: string): "seed" | "name" | "position" | null => {
   const h = header.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -289,17 +344,14 @@ export const applyResultsToConfig = (
   results: ResultEntry[],
 ): ApplyResult => {
   const nameList = seedsToList(cfg.leftSeeds, cfg.rightSeeds);
-  const nameToSeed = new Map<string, number>();
-  nameList.forEach((n, i) => {
-    if (n) nameToSeed.set(normalizeName(n), i + 1);
-  });
+  const matchSeed = buildSeedMatcher(nameList);
 
   // Resolve each result entry to a seed, recording its finishing position.
   const fileBySeed = new Map<number, { position?: number }>();
   for (const e of results) {
     let seed = e.seed;
     if ((seed == null || seed < 1 || seed > 32) && e.name) {
-      seed = nameToSeed.get(normalizeName(e.name));
+      seed = matchSeed(e.name);
     }
     if (seed == null || seed < 1 || seed > 32) continue;
     const prev = fileBySeed.get(seed);
@@ -316,11 +368,11 @@ export const applyResultsToConfig = (
   // competitors each match currently has.
   const picks: Record<string, number> = {};
   for (const [matchId, name] of Object.entries(cfg.winners)) {
-    const s = nameToSeed.get(normalizeName(String(name)));
+    const s = matchSeed(String(name));
     if (s != null) picks[matchId] = s;
   }
   if (cfg.champion) {
-    const s = nameToSeed.get(normalizeName(cfg.champion));
+    const s = matchSeed(cfg.champion);
     if (s != null) picks[CHAMPION_PICK_ID] = s;
   }
 
